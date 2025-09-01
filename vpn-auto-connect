@@ -94,7 +94,9 @@ def configure_driver(args):
     chrome_options.add_argument('--window-size=720,540')
     chrome_options.add_argument('--ignore-certificate-errors')
     chrome_options.add_argument('--ignore-ssl-errors')
-    return webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=chrome_options)
+    driver_path = "/home/rafaelbiasi/.wdm/drivers/chromedriver/linux64/chromedriver-linux64/chromedriver"
+    return webdriver.Chrome(service=ChromeService(driver_path), options=chrome_options)
+#    return webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=chrome_options)
 
 
 def wait_for_page_load(driver, timeout=30):
@@ -110,34 +112,38 @@ def automate_login(driver, host, username, password):
     driver.get(host)
     wait_for_page_load(driver)
 
-    email_field = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.NAME, "loginfmt"))
+    # A página introduziu um passo "Tentando conectá-lo".
+    # Usar "element_to_be_clickable" garante que o campo esteja visível e habilitado.
+    email_field = WebDriverWait(driver, 30).until(
+        EC.element_to_be_clickable((By.NAME, "loginfmt"))
     )
+    email_field.clear()
     email_field.send_keys(username)
 
-    next_button = WebDriverWait(driver, 10).until(
+    next_button = WebDriverWait(driver, 30).until(
         EC.element_to_be_clickable((By.ID, "idSIButton9"))
     )
     next_button.click()
     wait_for_page_load(driver)
 
-    password_field = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.NAME, "passwd"))
+    password_field = WebDriverWait(driver, 30).until(
+        EC.element_to_be_clickable((By.NAME, "passwd"))
     )
+    password_field.clear()
     password_field.send_keys(password)
 
-    sign_in_button = WebDriverWait(driver, 10).until(
+    sign_in_button = WebDriverWait(driver, 30).until(
         EC.element_to_be_clickable((By.ID, "idSIButton9"))
     )
     sign_in_button.click()
     wait_for_page_load(driver)
 
-    dont_show_checkbox = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.ID, "KmsiCheckboxField"))
+    dont_show_checkbox = WebDriverWait(driver, 30).until(
+        EC.element_to_be_clickable((By.ID, "KmsiCheckboxField"))
     )
     dont_show_checkbox.click()
 
-    yes_button = WebDriverWait(driver, 10).until(
+    yes_button = WebDriverWait(driver, 30).until(
         EC.element_to_be_clickable((By.ID, "idSIButton9"))
     )
     yes_button.click()
@@ -330,7 +336,7 @@ def main():
         cookie = automate_login(driver, hostHttps, username, password)
 
     connect_vpn(cookie, host, lan_enabled, server_cert, vpn_slice, verbose=args.verbose)
-    keep_sudo_alive()
+    # keep_sudo_alive()
 
 
 if __name__ == "__main__":
