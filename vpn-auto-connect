@@ -13,10 +13,12 @@ import os
 import subprocess
 import time
 
+from urllib.parse import urlparse
 from cryptography.hazmat.primitives import hashes, padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -112,8 +114,8 @@ def automate_login(driver, host, username, password):
     driver.get(host)
     wait_for_page_load(driver)
 
-    # A página introduziu um passo "Tentando conectá-lo".
-    # Usar "element_to_be_clickable" garante que o campo esteja visível e habilitado.
+    # Login - Start
+    # Login - "Email" Screen
     email_field = WebDriverWait(driver, 30).until(
         EC.element_to_be_clickable((By.NAME, "loginfmt"))
     )
@@ -126,6 +128,7 @@ def automate_login(driver, host, username, password):
     next_button.click()
     wait_for_page_load(driver)
 
+    # Login - "Password" Screen
     password_field = WebDriverWait(driver, 30).until(
         EC.element_to_be_clickable((By.NAME, "passwd"))
     )
@@ -138,15 +141,32 @@ def automate_login(driver, host, username, password):
     sign_in_button.click()
     wait_for_page_load(driver)
 
-    dont_show_checkbox = WebDriverWait(driver, 30).until(
-        EC.element_to_be_clickable((By.ID, "KmsiCheckboxField"))
-    )
-    dont_show_checkbox.click()
+    current_netloc = urlparse(driver.current_url).netloc.split(':')[0].lower()
+    kmsi_domain = 'login.microsoftonline.com'
 
-    yes_button = WebDriverWait(driver, 30).until(
-        EC.element_to_be_clickable((By.ID, "idSIButton9"))
-    )
-    yes_button.click()
+    if current_netloc == kmsi_domain:
+        # Login - "Don't ask me again" Screen (opcional)
+        # Se continuar no domínio da Microsoft, tente executar a etapa KMSI.
+        try:
+            dont_show_checkbox = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "KmsiCheckboxField"))
+            )
+            dont_show_checkbox.click()
+
+            yes_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "idSIButton9"))
+            )
+            yes_button.click()
+            print('Tela "Don\'t ask me again" processada.')
+            wait_for_page_load(driver)
+        except TimeoutException:
+            # Caso a tela não apareça mesmo no mesmo domínio, siga adiante.
+            print('Tela "Don\'t ask me again" não apareceu; seguindo adiante.')
+    else:
+        # Se redirecionou para outro domínio, pule a etapa KMSI.
+        print('Domínio mudou após o login ({}); pulando "Don\'t ask me again".'.format(current_netloc))
+
+    # Login - Finish
     wait_for_page_load(driver)
 
     cookie = driver.get_cookie("SVPNCOOKIE")['value']
